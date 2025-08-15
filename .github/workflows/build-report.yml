@@ -1,0 +1,36 @@
+name: Report Build Status
+
+on:
+  # Auto-post when your Android/iOS build workflows finish
+  workflow_run:
+    workflows: ["Android Build", "iOS Build"]   # ← rename to your real workflow names later
+    types: [completed]
+  # Also let you trigger it manually for testing
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post status to Firebase
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            STATUS="success"
+            PLATFORM="manual"
+            COMMIT_SHA="${{ github.sha }}"
+            BRANCH="${{ github.ref_name }}"
+            ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            CHANGELOG="Manual ping from build-report.yml"
+          else
+            STATUS="${{ github.event.workflow_run.conclusion }}"
+            [ "$STATUS" = "success" ] || STATUS="failed"
+            PLATFORM="${{ github.event.workflow_run.name }}"
+            COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+            ARTIFACT_URL="${{ github.event.workflow_run.html_url }}"
+            CHANGELOG="${{ github.event.workflow_run.display_title }}"
+          fi
+
+          curl -X POST "${{ secrets.BUILD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"buildId\":\"${{ github.run_id }}\",\"platform\":\"$PLATFORM\",\"status\":\"$STATUS\",\"commitSha\":\"$COMMIT_SHA\",\"branch\":\"$BRANCH\",\"artifactUrl\":\"$ARTIFACT_URL\",\"changelog\":\"$CHANGELOG\"}"
