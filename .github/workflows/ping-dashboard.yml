@@ -1,0 +1,19 @@
+name: Ping Dashboard (manual)
+on: { workflow_dispatch: {} }
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post build status to Firebase
+        run: |
+          curl -X POST "${{ secrets.BUILD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "buildId": "'${{ github.run_id }}'",
+              "platform": "android",
+              "status": "success",
+              "commitSha": "'${{ github.sha }}'",
+              "branch": "'${{ github.ref_name }}'",
+              "artifactUrl": "https://github.com/'${{ github.repository }}'/actions/runs/'${{ github.run_id }}'",
+              "changelog": "Manual ping from GitHub Actions"
+            }'
